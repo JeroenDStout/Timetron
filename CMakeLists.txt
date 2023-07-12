@@ -24,6 +24,7 @@ include(cmake/tinyxml.cmake)
 include(cmake/qt.cmake)
 
 # Subprojects
+add_subdirectory(src/timetron_core)
 add_subdirectory(src/timetron_ui_qt)
 add_subdirectory(src/version)
 
