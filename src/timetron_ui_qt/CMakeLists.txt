@@ -29,5 +29,6 @@ configure_project_console(timetron_ui_qt)
 configure_cxx_target(timetron_ui_qt)
 configure_project_tinyxml2(timetron_ui_qt)
 configure_qt_target(timetron_ui_qt)
+configure_publish_exec(timetron_ui_qt)
 	
 add_dependencies(timetron_ui_qt version)

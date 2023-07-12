@@ -17,6 +17,7 @@ include(cmake/python.cmake)
 include(cmake/get_cpm.cmake)
 include(cmake/artefacts.cmake)
 include(cmake/sources.cmake)
+include(cmake/publish.cmake)
 
 # External
 include(cmake/tinyxml.cmake)
@@ -25,5 +26,9 @@ include(cmake/qt.cmake)
 # Subprojects
 add_subdirectory(src/timetron_ui_qt)
 add_subdirectory(src/version)
+
+# Publication
+configure_publish_qt6()
+finalise_publish()
 
 message(STATUS "")
