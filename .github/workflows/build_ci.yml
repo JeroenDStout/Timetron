@@ -1,0 +1,56 @@
+name: CI
+
+# On a push event on any branch
+on: [push]
+
+env:
+  BUILD_TYPE: Release
+  
+jobs:
+  build:
+    name: "Windows Latest MSVC"
+    runs-on: "Windows-latest"
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: git fetch
+      run: git fetch --unshallow --update-head-ok origin '+refs/heads/*:refs/heads/*'
+    
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: "6.4"
+        target: 'desktop'
+        install-deps: 'true'
+        modules: 'qtcharts qtmultimedia'
+          
+    - name: Configure CMake
+      env:
+        CMAKE_PREFIX_PATH: $env{QT6_DIR}
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
+      
+    - name: Build Debug
+      run: cmake --build ${{github.workspace}}/build --config Debug
+      
+    - name: Build Release
+      run: cmake --build ${{github.workspace}}/build --config Release
+
+    - name: Package (Debug)
+      run: python ${{github.workspace}}/util/package_zip.py
+        mode:"Debug"
+        config:"Debug"
+        info:"${{github.workspace}}/build/publish_info.txt"
+        out:"${{github.workspace}}/zip/timetron-debug.zip"
+      
+    - name: Package (Release)
+      run: python ${{github.workspace}}/util/package_zip.py
+        mode:"Debug"
+        config:"Release"
+        info:"${{github.workspace}}/build/publish_info.txt"
+        out:"${{github.workspace}}/zip/timetron-release.zip"
+       
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: artifacts
+        path: zip/*.zip
