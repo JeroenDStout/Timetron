@@ -16,8 +16,12 @@ setup_project_source(timetron_core "data"
 setup_project_source(timetron_core "proc"
   src:
     proc_diagnose.cpp
+	proc_timeline.cpp
+	proc_util.cpp
   include:
     proc_diagnose.h
+	proc_timeline.h
+	proc_util.h
 )
 
 # Target
