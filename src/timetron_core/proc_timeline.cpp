@@ -6,8 +6,10 @@
 
 #include <tinyxml2.h>
 
+#include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <thread>
 
 
 using namespace timetron::core;
@@ -112,4 +114,29 @@ void proc_timeline::deserialise_from_xml_day(data_timeline &timeline, tinyxml2::
             continue;
         }
     }
+}
+
+
+proc_timeline::deserialise_result proc_timeline::deserialise_from_xml_safe(data_timeline &timeline, std::string const &filepath)
+{
+    tinyxml2::XMLDocument document;
+    
+    bool success;
+
+    // We retry for a while in case the file was locked
+    // This sometimes happens f.i. on Google Drive
+    for (int retries = 0; retries < 200; ++retries) {
+        success = (tinyxml2::XML_SUCCESS == document.LoadFile(filepath.c_str()));
+        if (success)
+          break;
+
+        std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(100.));
+    }
+
+    if (!success)
+	  return deserialise_result::file_could_not_be_read;
+
+    deserialise_from_xml(timeline, document.RootElement());
+
+	return deserialise_result::ok;
 }

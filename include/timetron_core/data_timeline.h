@@ -1,5 +1,6 @@
 #pragma once
 
+#include "timetron_core/data_day.h"
 
 #include <ctime>
 #include <map>

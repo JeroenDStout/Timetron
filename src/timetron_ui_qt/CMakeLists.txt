@@ -31,4 +31,5 @@ configure_project_tinyxml2(timetron_ui_qt)
 configure_qt_target(timetron_ui_qt)
 configure_publish_exec(timetron_ui_qt)
 	
-add_dependencies(timetron_ui_qt version)
+add_dependencies(timetron_ui_qt version timetron_core)
+target_link_libraries(timetron_ui_qt PRIVATE timetron_core)

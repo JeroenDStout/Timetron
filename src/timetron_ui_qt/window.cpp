@@ -1,11 +1,19 @@
 #include "timetron_ui_qt/window.h"
+
+#include "timetron_core/data_timeline.h"
+#include "timetron_core/proc_timeline.h"
+#include "timetron_core/data_diagnostic.h"
+#include "timetron_core/proc_diagnose.h"
 #include "version/git_version.h"
 
-#include <qfilesystemwatcher>
+#include <tinyxml2.h>
+
 #include <qfiledialog>
+#include <qfilesystemwatcher>
 #include <qmessagebox>
 #include <qsettings>
 #include <qtabwidget>
+#include <qtimer>
 
 #include <iostream>
 #include <sstream>
@@ -34,14 +42,24 @@ void main_window::upon_open()
     this->restoreGeometry(settings.value("geometry").toByteArray());
     std::string const main_file_path = settings.value("main_file_path").toString().toStdString();
     
-    if (main_file_path.size() > 0) {
-        // ...
-    }
+    // Hide the scrollbar
+    this->setStyleSheet("QScrollBar:vertical {width: 0px;}");
+
+    this->recreate_timer.reset(new QTimer());
+    connect(
+      this->recreate_timer.get(), &QTimer::timeout,
+      this,                       &main_window::event_timer
+    );
+    
+    if (main_file_path.size() > 0)
+      this->perform_file_load(main_file_path);
 }
 
 
 void main_window::upon_close()
 {
+    std::cout << "main_window: Closing - file path is <" << current_file_path << ">" << std::endl;
+
     auto &settings = this->get_qsettings();
     settings.setValue("geometry", saveGeometry());
     settings.setValue("main_file_path", QString::fromStdString(current_file_path));
@@ -52,13 +70,15 @@ void main_window::upon_diag_open()
 {
     std::cout << "main_window: File open dialogue" << std::endl;
 
-    QString const in_path_q = QFileDialog::getOpenFileName(this, tr("Open tron"), "", tr("Extron file (*.xt.xml)"));
+    QString const in_path_q = QFileDialog::getOpenFileName(this, tr("Open tron"), "", tr("Timetron file (*.tt.xml)"));
     if (in_path_q.length() == 0)
       return;
 
     std::string const in_path = in_path_q.toStdString();
     if (in_path == current_file_path)
       return;
+
+    this->perform_file_load(in_path.c_str());
 }
 
 
@@ -78,6 +98,66 @@ void main_window::upon_about()
 }
 
 
+void main_window::perform_file_load(std::string const &path)
+{
+    current_file_path = path;
+    
+    std::cout << "main_window: Deserialising xml from <" << current_file_path << ">" << std::endl;
+
+    core::proc_timeline proc{};
+    switch (proc.deserialise_from_xml_safe(this->timeline, current_file_path))
+    {
+      case core::proc_timeline::deserialise_result::ok:
+        std::cout << "main_window: Ok" << std::endl;
+        break;
+      case core::proc_timeline::deserialise_result::file_could_not_be_read:
+        std::cout << "main_window: Could not read file!" << std::endl;
+        QMessageBox msgBox;
+        msgBox.setText(QString("The file could not be read."));
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.setDefaultButton(QMessageBox::Ok);
+        msgBox.exec();
+        current_file_path = "";
+        return;
+    }
+    
+    std::cout << "main_window: Loaded " << timeline.day_data.size() << " days" << std::endl;
+
+    this->perform_update_file_watch();
+    this->perform_update_diagnostics();
+}
+
+
+void main_window::perform_update_file_watch()
+{
+    std::cout << "main_window: Updating file watch" << std::endl;
+
+    file_watcher.reset(new QFileSystemWatcher(this));
+
+    file_watcher->addPath(QString::fromStdString(current_file_path));
+
+    connect(
+      file_watcher.get(), &QFileSystemWatcher::fileChanged,
+      this,               &main_window::event_file_changed
+    );
+}
+
+
+void main_window::perform_update_diagnostics()
+{
+    std::cout << "main_window: Updating diagnostics" << std::endl;
+    
+    core::proc_diagnose proc_diagnose{};
+
+    core::data_diagnostic diagnostic;
+    proc_diagnose.fill_diagnostic(this->timeline, diagnostic);
+
+    std::cout << "main_window: Created diagnostic with " << diagnostic.periods.size() << " periods" << std::endl;
+    
+    this->recreate_timer->start(10000);
+}
+
+
 QSettings& main_window::get_qsettings()
 {
     static QSettings timetron_settings("Stout", "Timetron");
@@ -94,4 +174,28 @@ void main_window::uii_file_open()
 void main_window::uii_about()
 {
     this->upon_about();
+}
+
+
+void main_window::event_file_changed(QString const &file)
+{
+    std::cout << "main_window: File changed" << std::endl;
+
+    if (this->current_file_path == file.toStdString())
+      this->perform_file_load(this->current_file_path);
+}
+
+
+void main_window::event_timer()
+{
+    std::cout << "main_window: Timer" << std::endl;
+
+    this->perform_update_diagnostics();
+}
+
+
+void main_window::closeEvent(QCloseEvent *event)
+{
+    this->upon_close();
+    QWidget::closeEvent(event);
 }
