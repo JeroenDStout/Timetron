@@ -20,12 +20,12 @@ macro(init_directory name)
   set(abs_gen_script  ${CMAKE_BINARY_DIR}/gen/${dir_script_rel})
   file(RELATIVE_PATH rel_can_assets ${abs_can_src} ${project_asset_dir})
   
-  message(STATUS "Canononical Source  : ./${abs_can_src}")
-  message(STATUS "Canononical Include : ./${abs_can_include}")
-  message(STATUS "Canononical Script  : ./${abs_can_script}")
-  message(STATUS "Generated Source    : ./${abs_gen_src}")
-  message(STATUS "Generated Include   : ./${abs_gen_include}")
-  message(STATUS "Generated Script    : ./${abs_gen_script}")
+  message(STATUS "Canononical Source  : ${abs_can_src}")
+  message(STATUS "Canononical Include : ${abs_can_include}")
+  message(STATUS "Canononical Script  : ${abs_can_script}")
+  message(STATUS "Generated Source    : ${abs_gen_src}")
+  message(STATUS "Generated Include   : ${abs_gen_include}")
+  message(STATUS "Generated Script    : ${abs_gen_script}")
 endmacro()
 
 
