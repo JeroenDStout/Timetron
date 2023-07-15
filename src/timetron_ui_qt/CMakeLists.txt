@@ -27,10 +27,10 @@ setup_project_source(timetron_ui_qt "proc"
   include:
     proc_view.h
 )
-#setup_project_source(extron_ui_qt "assets"
-#  src:
-#    ${rel_can_assets}/app_resource/resource.rc
-#)
+setup_project_source(timetron_ui_qt "assets"
+  src:
+    ${rel_can_assets}/app_resource/resource.rc
+)
 
 # Target
 configure_project_executable(timetron_ui_qt)
