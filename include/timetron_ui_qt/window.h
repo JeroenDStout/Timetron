@@ -3,12 +3,14 @@
 #include "timetron_ui_qt/ui_window.h"
 #include "timetron_ui_qt/ui_version.h"
 #include "timetron_core/data_timeline.h"
+#include "timetron_core/data_diagnostic.h"
 #include <qmainwindow>
 
 class QFileSystemWatcher;
+class QGridLayout;
 class QSettings;
 class QTabWidget;
-class QFileSystemWatcher;
+class QVBoxLayout;
 
 
 namespace timetron::ui_qt {
@@ -33,9 +35,13 @@ namespace timetron::ui_qt {
         void perform_file_load(std::string const &);
         void perform_update_file_watch();
         void perform_update_diagnostics();
+        void perform_update_timeline_view();
+        void perform_clear_timeline_view();
 
         // Qt
-        QSettings&  get_qsettings();
+        QSettings&   get_qsettings();
+        QGridLayout* get_ui_current_projects();
+        QVBoxLayout* get_ui_current_effective();
 
       signals:
 
@@ -49,7 +55,8 @@ namespace timetron::ui_qt {
         void closeEvent(QCloseEvent *event) override;
 
       private:
-        core::data_timeline timeline;
+        core::data_timeline   timeline;
+        core::data_diagnostic diagnostic;
 
         std::string         current_file_path;
 

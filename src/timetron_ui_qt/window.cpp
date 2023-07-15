@@ -148,13 +148,46 @@ void main_window::perform_update_diagnostics()
     std::cout << "main_window: Updating diagnostics" << std::endl;
     
     core::proc_diagnose proc_diagnose{};
-
-    core::data_diagnostic diagnostic;
-    proc_diagnose.fill_diagnostic(this->timeline, diagnostic);
-
+    proc_diagnose.fill_diagnostic(this->timeline, this->diagnostic);
+    
     std::cout << "main_window: Created diagnostic with " << diagnostic.periods.size() << " periods" << std::endl;
+
+    perform_update_timeline_view();
     
     this->recreate_timer->start(10000);
+}
+
+
+void main_window::perform_update_timeline_view()
+{
+    std::cout << "main_window: Update timeline view" << std::endl;
+
+    this->perform_clear_timeline_view();
+
+    core::proc_diagnose proc_diagnose{};
+
+    core::data_diagnostic_by_period diagnostic_by_period;
+    proc_diagnose.fill_diagnostic_organised(diagnostic, diagnostic_by_period);
+}
+
+
+void main_window::perform_clear_timeline_view()
+{
+    auto *ui_current_projects  = this->get_ui_current_projects();
+    auto *ui_current_effective = this->get_ui_current_effective();
+
+    while (auto item = ui_current_projects->takeAt(0)) {
+        QWidget *widget;
+        if (widget = item->widget())
+          widget->deleteLater();
+        delete item;
+    }
+    while (auto item = ui_current_effective->takeAt(0)) {
+        QWidget *widget;
+        if (widget = item->widget())
+          widget->deleteLater();
+        delete item;
+    }
 }
 
 
@@ -162,6 +195,30 @@ QSettings& main_window::get_qsettings()
 {
     static QSettings timetron_settings("Stout", "Timetron");
     return timetron_settings;
+}
+
+
+QGridLayout * main_window::get_ui_current_projects()
+{
+    auto widget = this->ui_window.centralWidget->topLevelWidget()->findChild<QWidget*>(QString("current_projects"));
+
+    if (!widget)
+      return nullptr;
+
+    auto layout = qobject_cast<QGridLayout*>(widget->layout());
+    return layout;
+}
+
+
+QVBoxLayout * main_window::get_ui_current_effective()
+{
+    auto widget = this->ui_window.centralWidget->topLevelWidget()->findChild<QWidget*>(QString("current_state_short"));
+
+    if (!widget)
+      return nullptr;
+
+    auto layout = qobject_cast<QVBoxLayout*>(widget->layout());
+    return layout;
 }
 
 
