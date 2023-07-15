@@ -20,7 +20,6 @@ namespace timetron::core {
         struct task {
             std::string   id, name;
             std::time_t   last_occurrence;
-            bool          is_extra;
             float         relative_weight;
             float         minute_progress_factor;
             float         minute_absence_penalty;
@@ -47,14 +46,25 @@ namespace timetron::core {
         std::vector<task_in_period> tasks_by_period;
     };
 
+
+	enum class data_work_in_period_type {
+		day,
+		week_1,
+		week_4,
+		year
+	};
+
     // Total work done within a time slice
     class data_work_in_period {
       public:
-        using time_by_name  = std::unordered_map<std::string, float>;
+        using time_by_name        = std::unordered_map<std::string, float>;
+        using work_in_period_type = data_work_in_period_type;
 
-        std::string   name;
-        std::time_t   start, end;
-        time_by_name  minutes;
+        std::string         name;
+        std::time_t         start, end;
+        work_in_period_type period_type;
+        float               full_minutes;
+        time_by_name        task_minutes;
     };
 
 }

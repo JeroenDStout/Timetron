@@ -4,6 +4,7 @@
 #include "timetron_core/proc_timeline.h"
 #include "timetron_core/data_diagnostic.h"
 #include "timetron_core/proc_diagnose.h"
+#include "timetron_ui_qt/proc_view.h"
 #include "version/git_version.h"
 
 #include <tinyxml2.h>
@@ -165,24 +166,26 @@ void main_window::perform_update_timeline_view()
     this->perform_clear_timeline_view();
 
     core::proc_diagnose proc_diagnose{};
-
     core::data_diagnostic_by_period diagnostic_by_period;
-    proc_diagnose.fill_diagnostic_organised(diagnostic, diagnostic_by_period);
+    proc_diagnose.fill_diagnostic_organised(this->diagnostic, diagnostic_by_period);
+    
+    ui_qt::proc_view proc_view{};
+    proc_view.fill_timeline_view_blocks(this->diagnostic, diagnostic_by_period, *this->get_ui_current_projects());
 }
 
 
 void main_window::perform_clear_timeline_view()
 {
-    auto *ui_current_projects  = this->get_ui_current_projects();
-    auto *ui_current_effective = this->get_ui_current_effective();
+    auto &ui_current_projects  = *this->get_ui_current_projects();
+    auto &ui_current_effective = *this->get_ui_current_effective();
 
-    while (auto item = ui_current_projects->takeAt(0)) {
+    while (auto item = ui_current_projects.takeAt(0)) {
         QWidget *widget;
         if (widget = item->widget())
           widget->deleteLater();
         delete item;
     }
-    while (auto item = ui_current_effective->takeAt(0)) {
+    while (auto item = ui_current_effective.takeAt(0)) {
         QWidget *widget;
         if (widget = item->widget())
           widget->deleteLater();

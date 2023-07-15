@@ -189,9 +189,11 @@ void proc_diagnose::fill_diagnostic(data_timeline const& timeline, data_diagnost
         for (auto &period : diagnostic.periods) {
             if (period.start > data.first.time || period.end <= data.first.time)
               continue;
-            
-            for (auto &done_work : data.second.done_work)
-              period.minutes[done_work.put_id] += done_work.minutes;
+
+            for (auto &done_work : data.second.done_work) {
+                period.full_minutes                   += done_work.minutes;
+                period.task_minutes[done_work.put_id] += done_work.minutes;
+            }
         }
     }
 
@@ -294,9 +296,10 @@ void proc_diagnose::create_periods(data_diagnostic& diagnostic, std::time_t cons
         ss << std::put_time(&current_day_tm, "%a");
 
         data_work_in_period period_today;
-        period_today.name  = ss.str();
-        period_today.start = current_day - 1 * day_length;
-        period_today.end   = std::numeric_limits<std::time_t>::max();
+        period_today.name        = ss.str();
+        period_today.start       = current_day - 1 * day_length;
+        period_today.end         = std::numeric_limits<std::time_t>::max();
+        period_today.period_type = data_work_in_period_type::day;
         diagnostic.periods.push_back(period_today);
     }
     
@@ -337,9 +340,10 @@ void proc_diagnose::create_periods(data_diagnostic& diagnostic, std::time_t cons
             }
             
             data_work_in_period period_week;
-            period_week.name  = ss.str();
-            period_week.start = parse_week - day_length;
-            period_week.end   = std::min(current_day - day_length, parse_week + 6 * day_length);
+            period_week.name        = ss.str();
+            period_week.start       = parse_week - day_length;
+            period_week.end         = std::min(current_day - day_length, parse_week + 6 * day_length);
+            period_week.period_type = data_work_in_period_type::week_1;
             diagnostic.periods.push_back(period_week);
         }
     }
@@ -368,9 +372,10 @@ void proc_diagnose::create_periods(data_diagnostic& diagnostic, std::time_t cons
             }
             
             data_work_in_period period_4week;
-            period_4week.name  = ss.str();
-            period_4week.start = parse_4week - day_length;
-            period_4week.end   = std::min(parse_week - day_length, parse_4week + 27 * day_length);
+            period_4week.name        = ss.str();
+            period_4week.start       = parse_4week - day_length;
+            period_4week.end         = std::min(parse_week - day_length, parse_4week + 27 * day_length);
+            period_4week.period_type = data_work_in_period_type::week_4;
             diagnostic.periods.push_back(period_4week);
         }
     }
@@ -396,9 +401,10 @@ void proc_diagnose::create_periods(data_diagnostic& diagnostic, std::time_t cons
             ss << std::put_time(&year_tm_parse, "%Y");
             
             data_work_in_period period_year;
-            period_year.name  = ss.str();
-            period_year.start = year_time_start;
-            period_year.end   = year_time_end;
+            period_year.name        = ss.str();
+            period_year.start       = year_time_start;
+            period_year.end         = year_time_end;
+            period_year.period_type = data_work_in_period_type::year;
             diagnostic.periods.push_back(period_year);
         }
     }
@@ -414,7 +420,7 @@ void proc_diagnose::fill_diagnostic_organised(data_diagnostic const &diagnostic,
     // For all tasks, find the min and max period they occur in, and put them in a vector
     for (auto const &task : diagnostic.current_tasks) {
         task_in_period tip;
-        static_cast<data_diagnostic::task>(tip) = task.second;
+        static_cast<data_diagnostic::task&>(tip) = task.second;
         
         tip.min_diag_period = std::numeric_limits<int>::max();
         tip.max_diag_period = std::numeric_limits<int>::min();
@@ -472,8 +478,8 @@ void proc_diagnose::fill_diagnostic_organised(data_diagnostic const &diagnostic,
 
 float proc_diagnose::get_minutes_in_period(data_work_in_period const &period, std::string const &taskName)
 {
-    auto find = period.minutes.find(taskName);
-    if (find == period.minutes.end())
+    auto find = period.task_minutes.find(taskName);
+    if (find == period.task_minutes.end())
       return 0.f;
 
     return find->second;

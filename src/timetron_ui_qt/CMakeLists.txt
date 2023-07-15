@@ -7,9 +7,6 @@ init_project(timetron_ui_qt "timetron/qt")
 setup_project_source(timetron_ui_qt "core"
   src:
     main.cpp
-)
-setup_project_source(timetron_ui_qt "window"
-  src:
     window.cpp
   include:
     window.h
@@ -17,6 +14,12 @@ setup_project_source(timetron_ui_qt "window"
 setup_project_source_qt_ui(timetron_ui_qt "ui"
   window.ui
   version.ui
+)
+setup_project_source(timetron_ui_qt "proc"
+  src:
+    proc_view.cpp
+  include:
+    proc_view.h
 )
 #setup_project_source(extron_ui_qt "assets"
 #  src:
