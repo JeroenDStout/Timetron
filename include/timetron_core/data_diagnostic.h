@@ -10,27 +10,20 @@
 namespace timetron::core {
 
     class data_day;
+    class data_work_in_period;
     
     class data_diagnostic {
       public:
-        using time_by_name = std::unordered_map<std::string, float>;
-
-        // Total work done within a time slice
-        struct work_period {
-          std::string   name;
-          std::time_t   start, end;
-          time_by_name  minutes;
-        };
-        using work_period_v = std::vector<work_period>;
+        using work_period_v = std::vector<data_work_in_period>;
 
         // Current state of a task
         struct task {
-          std::string   id, name;
-          std::time_t   last_occurrence;
-          bool          is_extra;
-          float         relative_weight;
-          float         minute_progress_factor;
-          float         minute_absence_penalty;
+            std::string   id, name;
+            std::time_t   last_occurrence;
+            bool          is_extra;
+            float         relative_weight;
+            float         minute_progress_factor;
+            float         minute_absence_penalty;
         };
         using task_by_name = std::unordered_map<std::string, task>;
 
@@ -41,6 +34,27 @@ namespace timetron::core {
                        
         task_by_name   current_tasks;
         work_period_v  periods;
+    };
+
+    class data_diagnostic_by_period {
+      public:
+        struct task_in_period : public data_diagnostic::task {
+            int min_diag_period, max_diag_period;
+        };
+
+        void clear();
+
+        std::vector<task_in_period> tasks_by_period;
+    };
+
+    // Total work done within a time slice
+    class data_work_in_period {
+      public:
+        using time_by_name  = std::unordered_map<std::string, float>;
+
+        std::string   name;
+        std::time_t   start, end;
+        time_by_name  minutes;
     };
 
 }

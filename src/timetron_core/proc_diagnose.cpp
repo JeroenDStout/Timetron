@@ -293,7 +293,7 @@ void proc_diagnose::create_periods(data_diagnostic& diagnostic, std::time_t cons
         std::stringstream ss;
         ss << std::put_time(&current_day_tm, "%a");
 
-        data_diagnostic::work_period period_today;
+        data_work_in_period period_today;
         period_today.name  = ss.str();
         period_today.start = current_day - 1 * day_length;
         period_today.end   = std::numeric_limits<std::time_t>::max();
@@ -336,7 +336,7 @@ void proc_diagnose::create_periods(data_diagnostic& diagnostic, std::time_t cons
                 ss << std::put_time(&parse_week_tm, "%a");
             }
             
-            data_diagnostic::work_period period_week;
+            data_work_in_period period_week;
             period_week.name  = ss.str();
             period_week.start = parse_week - day_length;
             period_week.end   = std::min(current_day - day_length, parse_week + 6 * day_length);
@@ -367,7 +367,7 @@ void proc_diagnose::create_periods(data_diagnostic& diagnostic, std::time_t cons
                 ss << "-" << std::put_time(&parse_4week_tm, "%V");
             }
             
-            data_diagnostic::work_period period_4week;
+            data_work_in_period period_4week;
             period_4week.name  = ss.str();
             period_4week.start = parse_4week - day_length;
             period_4week.end   = std::min(parse_week - day_length, parse_4week + 27 * day_length);
@@ -395,11 +395,86 @@ void proc_diagnose::create_periods(data_diagnostic& diagnostic, std::time_t cons
             std::stringstream ss;
             ss << std::put_time(&year_tm_parse, "%Y");
             
-            data_diagnostic::work_period period_year;
+            data_work_in_period period_year;
             period_year.name  = ss.str();
             period_year.start = year_time_start;
             period_year.end   = year_time_end;
             diagnostic.periods.push_back(period_year);
         }
     }
+}
+
+
+void proc_diagnose::fill_diagnostic_organised(data_diagnostic const &diagnostic, data_diagnostic_by_period &by_period)
+{
+    using task_in_period = data_diagnostic_by_period::task_in_period;
+
+    by_period.clear();
+
+    // For all tasks, find the min and max period they occur in, and put them in a vector
+    for (auto const &task : diagnostic.current_tasks) {
+        task_in_period tip;
+        static_cast<data_diagnostic::task>(tip) = task.second;
+        
+        tip.min_diag_period = std::numeric_limits<int>::max();
+        tip.max_diag_period = std::numeric_limits<int>::min();
+        
+        for (std::size_t i = 0; i < diagnostic.periods.size(); ++i) {
+            if (0.f == get_minutes_in_period(diagnostic.periods[i], task.first))
+              continue;
+
+            tip.min_diag_period = std::min(tip.min_diag_period, (int)i);
+            tip.max_diag_period = std::max(tip.max_diag_period, (int)i);
+        }
+        
+        by_period.tasks_by_period.push_back(tip);
+    }
+    
+    // Sort the vector with a bias for recency, start, and gaps
+    std::sort(
+      by_period.tasks_by_period.begin(), by_period.tasks_by_period.end(),
+      [&](task_in_period const &lh, task_in_period const &rh) -> bool {
+          // If the lh task has been done more recently, it always sorts lower
+          if (lh.min_diag_period != rh.min_diag_period)
+            return lh.min_diag_period < rh.min_diag_period;
+          
+          // If the lh task has started later, it always sorts lower
+          if (lh.max_diag_period != rh.max_diag_period)
+            return lh.max_diag_period < rh.max_diag_period;
+          
+          // If the lh task had a gap more recently, it always sorts lower
+          for (const auto &period : diagnostic.periods) {
+              float const lh_minutes = this->get_minutes_in_period(period, lh.id);
+              float const rh_minutes = this->get_minutes_in_period(period, rh.id);
+              if ((lh_minutes == 0.f) != (rh_minutes == 0.f))
+                return (lh_minutes == 0.f) > (rh_minutes == 0.f);
+          }
+
+          // If they have the same relative weight, sort by name
+          if (lh.relative_weight == rh.relative_weight)
+            return lh.name.compare(rh.name) < 0;
+
+          // If one of them has a weight of zero, it always sorts higher
+          if (lh.relative_weight == 0.f)
+            return false;
+          if (rh.relative_weight == 0.f)
+            return true;
+
+          // If the lh task occurred more recently, it always sorts lower
+          if (lh.last_occurrence != rh.last_occurrence)
+            return lh.last_occurrence > rh.last_occurrence;
+
+          // If all else is identical, sort by name
+          return lh.name.compare(rh.name) < 0;
+    });
+}
+
+
+float proc_diagnose::get_minutes_in_period(data_work_in_period const &period, std::string const &taskName)
+{
+    auto find = period.minutes.find(taskName);
+    if (find == period.minutes.end())
+      return 0.f;
+
+    return find->second;
 }
