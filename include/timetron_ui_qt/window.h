@@ -41,7 +41,7 @@ namespace timetron::ui_qt {
         // Qt
         QSettings&   get_qsettings();
         QGridLayout* get_ui_current_projects();
-        QVBoxLayout* get_ui_current_effective();
+        QVBoxLayout* get_ui_current_urgency();
 
       signals:
 

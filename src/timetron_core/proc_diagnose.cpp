@@ -181,6 +181,8 @@ void proc_diagnose::fill_diagnostic(data_timeline const& timeline, data_diagnost
             task_data.last_occurrence = data.first.time;
             task_data.minute_progress += done_work.minutes;
             
+            task_data.absence_penalty = task_data.absence_penalty * .5f + done_work.minutes * .5f;
+
             for (auto &task : tasks)
               task.second.minute_progress -= task.second.minute_weight * done_work.minutes;
         }

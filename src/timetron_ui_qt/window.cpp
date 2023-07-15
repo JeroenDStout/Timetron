@@ -171,13 +171,14 @@ void main_window::perform_update_timeline_view()
     
     ui_qt::proc_view proc_view{};
     proc_view.fill_timeline_view_blocks(this->diagnostic, diagnostic_by_period, *this->get_ui_current_projects());
+    proc_view.fill_timeline_view_urgency(this->diagnostic, *this->get_ui_current_urgency());
 }
 
 
 void main_window::perform_clear_timeline_view()
 {
     auto &ui_current_projects  = *this->get_ui_current_projects();
-    auto &ui_current_effective = *this->get_ui_current_effective();
+    auto &ui_current_effective = *this->get_ui_current_urgency();
 
     while (auto item = ui_current_projects.takeAt(0)) {
         QWidget *widget;
@@ -213,7 +214,7 @@ QGridLayout * main_window::get_ui_current_projects()
 }
 
 
-QVBoxLayout * main_window::get_ui_current_effective()
+QVBoxLayout * main_window::get_ui_current_urgency()
 {
     auto widget = this->ui_window.centralWidget->topLevelWidget()->findChild<QWidget*>(QString("current_state_short"));
 

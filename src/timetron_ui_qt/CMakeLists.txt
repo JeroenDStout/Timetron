@@ -15,6 +15,12 @@ setup_project_source_qt_ui(timetron_ui_qt "ui"
   window.ui
   version.ui
 )
+setup_project_source(timetron_ui_qt "data"
+  src:
+    data_view.cpp
+  include:
+    data_view.h
+)
 setup_project_source(timetron_ui_qt "proc"
   src:
     proc_view.cpp

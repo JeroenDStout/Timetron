@@ -1,10 +1,12 @@
-#include "timetron_ui_qt/proc_view.h"
+﻿#include "timetron_ui_qt/proc_view.h"
 
 #include "timetron_core/data_diagnostic.h"
 #include "timetron_core/proc_diagnose.h"
+#include "timetron_ui_qt/data_view.h"
 
-#include <qlabel>
 #include <qgridlayout>
+#include <qlabel>
+#include <qvboxlayout>
 
 #include <iomanip>
 #include <sstream>
@@ -93,7 +95,143 @@ void proc_view::fill_timeline_view_blocks(core::data_diagnostic const           
         ++current_row;
     }
 
-    layout.addItem(new QSpacerItem(20,10, QSizePolicy::Expanding, QSizePolicy::Expanding), current_row, 2 + diagnostic.periods.size());
+    layout.addItem(new QSpacerItem(20,10, QSizePolicy::Expanding, QSizePolicy::Expanding), current_row, 2 + (int)diagnostic.periods.size());
+}
+
+
+void proc_view::fill_timeline_view_urgency(core::data_diagnostic const &diagnostic, QVBoxLayout &layout)
+{
+    data_view_urgency urgency;
+    this->fill_view_urgency(diagnostic, urgency);
+
+    int         prev_emoji_count     = -1;
+    std::size_t elements_seen        = 0;
+    bool        elements_seen_over_5 = false;
+
+    for (auto const &elem : urgency.tasks) {
+        elements_seen_over_5 |= ++elements_seen == 6;
+        
+        int margin = 0;
+        
+        // Determine if we want to leave a space in-between elements -
+        // basically we just check if the emoji count is different; or
+        // whether we switched to-or-from having peach emojis
+        int const emoji_count_sum = elem.emoji_clover_count + elem.emoji_water_count + (elem.emoji_peach_count * 100) + elem.emoji_star_count;
+        if (prev_emoji_count != -1 && emoji_count_sum != prev_emoji_count)
+        {
+            if (elem.emoji_peach_count == 1 || elements_seen_over_5)
+              margin = 100;
+            else
+              margin = 7;
+        
+            elements_seen_over_5 = false;
+        }
+        prev_emoji_count = emoji_count_sum;
+        
+        std::string task_str         = this->create_task_urgency_string(elem);
+        std::string task_tooltip_str = this->create_task_urgency_tooltip_string(elem);
+
+        QLabel *label = new QLabel();
+        label->setText(QString::fromStdString(task_str));
+        label->setContentsMargins(0, margin, 0, 0);
+        label->setToolTip(QString::fromStdString(task_tooltip_str));
+        
+        layout.addWidget(label);
+    }
+    
+    layout.addSpacerItem(new QSpacerItem(0,10, QSizePolicy::Expanding, QSizePolicy::Expanding));
+}
+
+
+void proc_view::fill_view_urgency(core::data_diagnostic const &diagnostic, data_view_urgency &urgency)
+{
+    urgency.clear();
+
+    for (auto const &elem : diagnostic.current_tasks) {
+        auto const &task = elem.second;
+
+        if (task.relative_weight == 0.f)
+          continue;
+          
+        constexpr float factor_adjustment = 60.f;
+        
+        float const adjusted_factor         = (task.minute_progress_factor + task.minute_absence_penalty) / factor_adjustment;
+        float const adjusted_absence_factor = task.minute_absence_penalty / factor_adjustment;
+        float const unadjusted_factor       = task.minute_progress_factor / factor_adjustment;
+        float const adjusted_factor_abs     = std::abs(adjusted_factor);
+        
+        int emoji_count      = 1;
+        int unadjusted_count = 0;
+        int penalty_count    = 0;
+        
+        if (adjusted_factor_abs >= 1.f) {
+            emoji_count += int(std::log2(1.f + adjusted_factor_abs) * 3.f);
+        }
+        if (unadjusted_factor < 0.f) {
+            unadjusted_count = 1;
+            if (unadjusted_factor < -1.f)
+              unadjusted_count += int(std::log2(1.f + -unadjusted_factor) * 3.f);
+        }
+        if (adjusted_absence_factor < 0.f) {
+            penalty_count = 1 + int(std::log2(1.f + -adjusted_absence_factor) * 3.f);
+        }
+
+        data_view_urgency::task output_elem;
+        output_elem.emoji_water_count  = 0;
+        output_elem.emoji_clover_count = 0;
+        output_elem.emoji_peach_count  = 0;
+        output_elem.emoji_star_count   = 0;
+        output_elem.name               = task.name;
+        output_elem.abs_progress       = task.minute_progress_factor / 60.f;
+        output_elem.full_progress      = (task.minute_progress_factor + task.minute_absence_penalty) / 60.f;
+        output_elem.penalty            = task.minute_absence_penalty / 60.f;
+
+        int const display_emoji_count   = emoji_count - 6;
+        int const display_penalty_count = penalty_count - 6;
+
+        if (display_emoji_count <= 0)
+        {
+            output_elem.emoji_peach_count = 1;
+        }
+        else if (adjusted_factor > 0.f)
+        {
+            output_elem.emoji_star_count  = display_emoji_count;
+        }
+        else
+        {
+            output_elem.emoji_clover_count = std::max(adjusted_absence_factor < 0.f ? 1 : 0, std::min(display_penalty_count, display_emoji_count));
+            output_elem.emoji_water_count  = display_emoji_count - output_elem.emoji_clover_count;
+        }
+      
+        urgency.tasks.emplace_back(output_elem);
+    }
+
+    std::sort(
+      urgency.tasks.begin(), urgency.tasks.end(),
+      [](data_view_urgency::task const &lh, data_view_urgency::task const &rh) -> bool {
+        // If there are more clover and water emojis, always sort lower
+        if (lh.emoji_clover_count + lh.emoji_water_count != rh.emoji_clover_count + rh.emoji_water_count)
+          return lh.emoji_clover_count + lh.emoji_water_count > rh.emoji_clover_count + rh.emoji_water_count;
+          
+        // If there are more clovers, always sort lower
+        if (lh.emoji_clover_count != rh.emoji_clover_count)
+          return lh.emoji_clover_count > rh.emoji_clover_count;
+          
+        // If there are more water emojis, always sort lower
+        if (lh.emoji_water_count != rh.emoji_water_count)
+          return lh.emoji_water_count > rh.emoji_water_count;
+
+        // If there are more star emojis, always sort higher
+        if (lh.emoji_star_count != rh.emoji_star_count)
+          return lh.emoji_star_count < rh.emoji_star_count;
+
+        // If there are more peach emojis, always sort higher
+        if (lh.emoji_peach_count != rh.emoji_peach_count)
+          return lh.emoji_peach_count < rh.emoji_peach_count;
+
+        // Sort by name
+        return lh.name < rh.name;
+    });
 }
 
 
@@ -193,6 +331,42 @@ std::string proc_view::create_task_hour_style_string(core::data_work_in_period_t
     style << "QLabel { font-size : " << font_size << "px; color : #" << font_colour << " }";
 
     return style.str();
+}
+
+
+std::string proc_view::create_task_urgency_string(data_view_urgency_task const &task)
+{
+    std::stringstream ss;
+        
+    ss << task.name << " ";
+        
+    for (int i = 0; i < task.emoji_clover_count; ++i)
+        ss << u8"🍀";
+    for (int i = 0; i < task.emoji_water_count; ++i)
+        ss << u8"🌊";
+    for (int i = 0; i < task.emoji_peach_count; ++i)
+        ss << u8"🍑";
+    for (int i = 0; i < task.emoji_star_count; ++i)
+        ss << u8"⭐";
+
+    return ss.str();
+}
+
+
+std::string proc_view::create_task_urgency_tooltip_string(data_view_urgency_task const &task)
+{
+    std::stringstream ss;
+
+    ss << std::fixed << std::setprecision(1);
+    ss << task.name << ((task.full_progress >= 0.05f) ? " +" : " ") << task.full_progress << "h";
+    if (task.penalty < -.1f || task.emoji_clover_count > 0) {
+      ss << "\n    (";
+      ss << ((task.abs_progress >= 0.05f) ? " +" : " ") << task.abs_progress << "h ";
+      ss << ((task.penalty >= 0.05f) ?      " +" : " ") << task.penalty << "h";
+      ss << ")";
+    }
+
+    return ss.str();
 }
 
 
