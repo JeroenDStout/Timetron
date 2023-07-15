@@ -283,7 +283,7 @@ void proc_diagnose::create_periods(data_diagnostic& diagnostic, std::time_t cons
 
     constexpr int period_week_count  = 4;
     constexpr int period_4week_count = 6;
-    constexpr int period_year_count  = 2;
+    constexpr int period_year_count  = 3;
 
     // Get the current time
     std::time_t const current_day    = reference_time + day_length;
